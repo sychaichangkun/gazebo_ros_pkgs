@@ -89,6 +89,8 @@ void GazeboRosDiffDrive::Load ( physics::ModelPtr _parent, sdf::ElementPtr _sdf 
     gazebo_ros_->getParameterBoolean ( publishWheelTF_, "publishWheelTF", false );
     gazebo_ros_->getParameterBoolean ( publishWheelJointState_, "publishWheelJointState", false );
     gazebo_ros_->getParameterBoolean ( legacy_mode_, "legacyMode", true );
+    gazebo_ros_->getParameterBoolean ( publishOdomTF_, "publishOdomTF", true );
+    gazebo_ros_->getParameterBoolean ( publishOdomTopic_, "publishOdomTopic", true );
 
     if (!_sdf->HasElement("legacyMode"))
     {
@@ -465,11 +467,14 @@ void GazeboRosDiffDrive::publishOdometry ( double step_time )
         odom_.twist.twist.linear.x = cosf ( yaw ) * linear.X() + sinf ( yaw ) * linear.Y();
         odom_.twist.twist.linear.y = cosf ( yaw ) * linear.Y() - sinf ( yaw ) * linear.X();
     }
+    
+    if(publishOdomTF_){
+        tf::Transform base_footprint_to_odom ( qt, vt );
+        transform_broadcaster_->sendTransform (
+            tf::StampedTransform ( base_footprint_to_odom, current_time,
+                                   odom_frame, base_footprint_frame ) );
+    }
 
-    tf::Transform base_footprint_to_odom ( qt, vt );
-    transform_broadcaster_->sendTransform (
-        tf::StampedTransform ( base_footprint_to_odom, current_time,
-                               odom_frame, base_footprint_frame ) );
 
 
     // set covariance
@@ -486,7 +491,8 @@ void GazeboRosDiffDrive::publishOdometry ( double step_time )
     odom_.header.frame_id = odom_frame;
     odom_.child_frame_id = base_footprint_frame;
 
-    odometry_publisher_.publish ( odom_ );
+    if(publishOdomTopic_)
+        odometry_publisher_.publish ( odom_ );
 }
 
 GZ_REGISTER_MODEL_PLUGIN ( GazeboRosDiffDrive )
